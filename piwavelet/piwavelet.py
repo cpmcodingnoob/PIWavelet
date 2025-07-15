@@ -53,10 +53,10 @@ import os, sys
 import numpy
 
 from numpy import (arange, ceil, concatenate, conjugate, cos, exp, isnan, log,
-                   log2, ones, pi, prod, real, sqrt, zeros, polyval, array, fix, dtype, modf,
+                   log2, ones, pi, prod, real, sqrt, zeros, polynomial, array, fix, dtype, modf,
                    around, meshgrid, isreal, round, intersect1d, asarray, matrix)
 from numpy.fft import fft, ifft, fftfreq
-from numpy.lib.polynomial import polyval
+from numpy.polynomial import Polynomial
 from numpy import abs as nAbs
 from numpy import argwhere
 from scipy.special import gamma
@@ -246,9 +246,25 @@ class DOG:
         Source: http://www.ask.com/wiki/Hermite_polynomials
 
         """
-        p = hermitenorm(self.m)
-        return ((-1) ** (self.m + 1) * polyval(p, t) * exp(-t ** 2 / 2) /
-                sqrt(gamma(self.m + 0.5)))
+        # Get coefficients of the probabilistic Hermite polynomial of order self.m
+        # `hermitenorm` returns coefficients in descending order of power (highest to lowest)
+        p_descending = hermitenorm(self.m)
+
+        # numpy.polynomial.Polynomial expects coefficients in *ascending* order of power (lowest to highest)
+        # So, we reverse the array of coefficients.
+        p_ascending = p_descending[::-1] 
+        
+        # Create a Polynomial object from the coefficients
+        # This object is callable, allowing us to evaluate the polynomial
+        hermite_polynomial = Polynomial(p_ascending)
+        
+        # Evaluate the Hermite polynomial at the given input `t`
+        poly_evaluated = hermite_polynomial(t)
+        
+        # Calculate the rest of the DOG wavelet formula
+        # Use np.exp and np.sqrt for compatibility with NumPy arrays (if t is an array)
+        return ((-1) ** (self.m + 1) * poly_evaluated * np.exp(-t ** 2 / 2) /
+                np.sqrt(gamma(self.m + 0.5)))
 
     def flambda(self):
         """Fourier wavelength as of Torrence and Compo (1998)"""
